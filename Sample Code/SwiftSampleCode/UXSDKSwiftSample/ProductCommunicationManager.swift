@@ -5,18 +5,29 @@
 //  Copyright © 2016 DJI. All rights reserved.
 //
 
+/*
+ This is a DJI created file for registering application and allowing use of DJISDK Framework
+ */
 import UIKit
+import Foundation
 import DJISDK
 
 let ProductCommunicationManagerStateDidChange = "ProductCommunicationManagerStateDidChange"
 
-class ProductCommunicationManager: NSObject, DJISDKManagerDelegate {
+class ProductCommunicationManager: NSObject, DJISDKManagerDelegate{
+    
+    //MARK: Properties
+    
+    //These are created instantiation
+    //give this instance a reference to the appDelegate
     open weak var appDelegate = UIApplication.shared.delegate as? AppDelegate
-    open var connectedProduct: DJIBaseProduct!
+    open weak var connectedProduct: DJIBaseProduct?
+    open weak var osdkDevice: DJIOnboardSDKDevice?
     
     var registered = false
     var connected = false
-    
+
+    //MARK: Methods
     open func connectToProduct() {
         if useBridge {
             NSLog("Connecting to Product using debug IP address: \(debugIP)...")
@@ -27,12 +38,13 @@ class ProductCommunicationManager: NSObject, DJISDKManagerDelegate {
             
             if startedResult {
                 NSLog("Connecting to product started successfully!")
-            } else {
+              } else {
                 NSLog("Connecting to product failed to start!")
             }
         }
     }
     
+    //This is called from appDelegate during launch
     func registerWithProduct() {
         guard
             let path = Bundle.main.path(forResource: "Info", ofType: "plist"),
@@ -45,14 +57,20 @@ class ProductCommunicationManager: NSObject, DJISDKManagerDelegate {
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
             NSLog("Registering Product with registration ID: \(appKey)")
+            //Create instance of DJISDKmanager with current instance passed to registerApp
+            //Self presumaably is the delegate
             DJISDKManager.registerApp(with: self)
         }
+        //This attempts to connect to product and assign the connected product to variable
+        self.connectToProduct()
+        self.connectedProduct = DJISDKManager.product()
+        
     }
     
-    //MARK: - DJISDKManagerDelegate
+    //MARK: DJISDKManagerDelegate
     func appRegisteredWithError(_ error: Error?) {
         if useBridge {
-            if error == nil {
+            if error == nil{
                 self.registered = true
                 NotificationCenter.default.post(Notification(name: Notification.Name(rawValue: ProductCommunicationManagerStateDidChange)))
             }
@@ -69,6 +87,7 @@ class ProductCommunicationManager: NSObject, DJISDKManagerDelegate {
         }
     }
     
+    //This is called by framework when a product is connected
     func productConnected(_ product: DJIBaseProduct?) {
         if product != nil {
             self.connected = true
